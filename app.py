@@ -38,3 +38,7 @@ def convert_pdf():
             if os.path.exists(temp_docx): os.remove(temp_docx)
         except:
             pass
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)
+
