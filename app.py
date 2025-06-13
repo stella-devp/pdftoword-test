@@ -5,8 +5,13 @@ import os
 
 app = Flask(__name__)
 
+AUTHORIZED_TOKEN = os.environ.get("API_AUTH_TOKEN", "BR Wissda2025")
 @app.route('/convert', methods=['POST'])
 def convert_pdf_to_docx():
+    auth_header = request.headers.get('Authorization')
+    if auth_header != AUTHORIZED_TOKEN:
+        return "❌ Unauthorized request", 401
+        
     try:
         # Step 1: Create temporary files
         pdf_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
