@@ -3,80 +3,115 @@ from pdf2docx import Converter
 import tempfile
 import os
 import logging
+import traceback
+import time
+import fitz  # PyMuPDF for PDF text extraction
 
 # Set up logging
-log_dir = "/tmp/azure_app_logs"  # Temporary log directory
+log_dir = "/tmp/azure_app_logs"
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
 logging.basicConfig(
-    filename=os.path.join(log_dir, "app.log"),  # Store logs in the temporary folder
+    filename=os.path.join(log_dir, "app.log"),
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 logger = logging.getLogger(__name__)
 
-# Define static token (you can store this in environment variables for better security)
-STATIC_AUTH_TOKEN = "xyz"  # Replace this with your actual token
-
+STATIC_AUTH_TOKEN = "Wissda_101"
 app = Flask(__name__)
+
+TEMP_DIR = "/tmp/temp-docs"
+if not os.path.exists(TEMP_DIR):
+    os.makedirs(TEMP_DIR)
+
+# Function to extract text from PDF using PyMuPDF
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    try:
+        doc = fitz.open(pdf_path)
+        for page_num in range(len(doc)):
+            page = doc.load_page(page_num)
+            text += page.get_text("text")  # Extract text from each page
+    except Exception as e:
+        logger.error(f"Error extracting text from PDF: {str(e)}")
+    return text
 
 @app.route('/convert', methods=['POST'])
 def convert_pdf_to_docx():
     # Step 1: Validate Authentication Token
     auth_token = request.headers.get('Authorization')
-    
+
     if auth_token != STATIC_AUTH_TOKEN:
         logger.warning("Unauthorized access attempt")
         return {"error": "Unauthorized access. Invalid or missing token."}, 403
 
     try:
-        # Step 2: Create temporary files
-        pdf_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-        docx_temp = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
+        # Step 2: Create temporary files inside the temp-docs directory
+        pdf_temp_path = os.path.join(TEMP_DIR, "temp_input.pdf")
+        docx_temp_path = os.path.join(TEMP_DIR, "converted_output.docx")
 
         # Step 3: Handle file from ServiceNow
         if 'file' in request.files:
             file = request.files['file']
-            file.save(pdf_temp.name)
+            file.save(pdf_temp_path)
             logger.info(f"Received file: {file.filename}")
         else:
             # For application/pdf content-type (binary stream)
-            pdf_temp.write(request.data)
-            pdf_temp.flush()
+            with open(pdf_temp_path, 'wb') as f:
+                f.write(request.data)
             logger.info("Received binary data")
 
-        # Step 4: Convert PDF → DOCX
+        # Step 4: Extract text using PyMuPDF (optional, for debugging)
+        logger.info("Extracting text from PDF...")
+        extracted_text = extract_text_from_pdf(pdf_temp_path)
+        logger.info(f"Extracted text: {extracted_text[:500]}")  # Log first 500 characters
+
+        # Step 5: Convert PDF → DOCX
         logger.info("Starting conversion...")
-        cv = Converter(pdf_temp.name)
-        cv.convert(docx_temp.name, start=0, end=None)
+        cv = Converter(pdf_temp_path)
+        try:
+            cv.convert(docx_temp_path, start=0, end=None)
+        except Exception as e:
+            logger.error(f"Error during conversion: {str(e)}")
+            return {"error": "Conversion failed due to an unexpected error during the conversion process."}, 500
         cv.close()
 
-        # Step 5: Return DOCX file as response
-        logger.info("Conversion successful, sending DOCX...")
-        return send_file(
-            docx_temp.name,
+        # Step 6: Return DOCX file as response
+        response = send_file(
+            docx_temp_path,
             as_attachment=True,
-            download_name="converted.docx",
+            download_name="converted.docx",  # The name the file will have when downloaded
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-    
-    except ZeroDivisionError as e:
-        logger.error(f"ZeroDivisionError occurred: {str(e)}")
-        return f"❌ Conversion error: Division by zero error. Please check the input data.", 500
+
+        logger.info(f"Response headers: {response.headers}")
+        return response
+
     except Exception as e:
-        logger.error(f"An error occurred: {str(e)}")
-        return f"❌ Conversion error: {str(e)}", 500
+        # Log full exception traceback
+        logger.error(f"An unexpected error occurred: {str(e)}")
+        logger.error("Full stack trace:\n" + traceback.format_exc())
+        return {"error": f"Conversion error: {str(e)}"}, 500
 
     finally:
-        # Cleanup temp files
-        if os.path.exists(pdf_temp.name):
-            os.remove(pdf_temp.name)
-            logger.info(f"Deleted temporary PDF file: {pdf_temp.name}")
-        if os.path.exists(docx_temp.name):
-            os.remove(docx_temp.name)
-            logger.info(f"Deleted temporary DOCX file: {docx_temp.name}")
+        # Cleanup temp files (Make sure to delete the files after processing)
+        try:
+            if os.path.exists(pdf_temp_path):
+                os.remove(pdf_temp_path)
+                logger.info(f"Deleted temporary PDF file: {pdf_temp_path}")
+        except Exception as e:
+            logger.error(f"Error deleting PDF temp file: {str(e)}")
+
+        try:
+            if os.path.exists(docx_temp_path):
+                os.remove(docx_temp_path)
+                logger.info(f"Deleted temporary DOCX file: {docx_temp_path}")
+        except Exception as e:
+            logger.error(f"Error deleting DOCX temp file: {str(e)}")
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000)
+ 
