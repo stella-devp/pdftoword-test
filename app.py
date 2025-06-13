@@ -42,6 +42,6 @@ def convert_pdf_to_docx():
         if os.path.exists(docx_temp.name):
             os.remove(docx_temp.name)
 
-# Optional for local testing only
-# if __name__ == '__main__':
-#     app.run(host="0.0.0.0", port=5000)
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)
