@@ -1,2 +1,2 @@
-flask
-pdf2docx
+Flask==3.0.3 
+pdf2docx==0.5.8
