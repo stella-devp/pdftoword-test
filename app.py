@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 
-AUTHORIZED_TOKEN = os.environ.get("API_AUTH_TOKEN", "xxx")
+AUTHORIZED_TOKEN = os.environ.get("API_AUTH_TOKEN", "BRWSS25")
 @app.route('/convert', methods=['POST'])
 def convert_pdf_to_docx():
     auth_header = request.headers.get('Authorization')
