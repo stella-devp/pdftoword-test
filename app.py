@@ -18,7 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Define static token (you can store this in environment variables for better security)
-STATIC_AUTH_TOKEN = "your-static-auth-token-here"  # Replace this with your actual token
+STATIC_AUTH_TOKEN = "Wissda_101"  # Replace this with your actual token
 
 app = Flask(__name__)
 
@@ -26,7 +26,7 @@ app = Flask(__name__)
 def convert_pdf_to_docx():
     # Step 1: Validate Authentication Token
     auth_token = request.headers.get('Authorization')
-
+    
     if auth_token != STATIC_AUTH_TOKEN:
         logger.warning("Unauthorized access attempt")
         return {"error": "Unauthorized access. Invalid or missing token."}, 403
@@ -61,7 +61,7 @@ def convert_pdf_to_docx():
             download_name="converted.docx",
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-
+    
     except ZeroDivisionError as e:
         logger.error(f"ZeroDivisionError occurred: {str(e)}")
         return f"❌ Conversion error: Division by zero error. Please check the input data.", 500
@@ -80,4 +80,3 @@ def convert_pdf_to_docx():
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000)
- 
