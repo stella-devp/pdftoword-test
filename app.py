@@ -18,7 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Define static token (you can store this in environment variables for better security)
-STATIC_AUTH_TOKEN = "Wissda_101"  # Replace this with your actual token
+STATIC_AUTH_TOKEN = "xyz"  # Replace this with your actual token
 
 app = Flask(__name__)
 
